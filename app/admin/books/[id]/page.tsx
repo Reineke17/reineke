@@ -290,7 +290,7 @@ export default async function AdminBookEditPage({ params }: Props) {
             <p className="text-black/50">Aucun post dans ce livre.</p>
           )}
 
-          {book.posts.map((post) => (
+          {book.posts.map((post: any) => (
             <div
               key={post.id}
               className="rounded-xl border border-black/10 bg-white p-4"
