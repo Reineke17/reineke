@@ -93,7 +93,7 @@ export default async function NewPostPage() {
             required
           >
             <option value="">Choisir un livre</option>
-            {books.map((book) => (
+            {books.map((book: any) => (
               <option key={book.id} value={book.id}>
                 {book.title}
               </option>
