@@ -33,11 +33,13 @@ export default async function BookReaderPage({ params }: Props) {
 
   if (!book) return notFound();
 
-  const targetPost = book.posts.find((post) => post.slug === postSlug);
+  const targetPost = book.posts.find(
+    (post: (typeof book.posts)[number]) => post.slug === postSlug
+  );
 
   if (!targetPost) return notFound();
 
-  const posts = book.posts.map((post) => ({
+  const posts = book.posts.map((post: (typeof book.posts)[number]) => ({
     id: post.id,
     slug: post.slug,
     title: post.title,
