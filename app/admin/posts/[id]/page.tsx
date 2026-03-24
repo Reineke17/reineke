@@ -352,7 +352,7 @@ export default async function PostAdminPage({ params }: Props) {
             <p className="text-white/60">Aucun média pour ce post.</p>
           )}
 
-          {post.media.map((m) => (
+          {post.media.map((m: (typeof post.media)[number]) => (
             <div
               key={m.id}
               className="rounded-xl border border-white/10 bg-white/5 p-4"
