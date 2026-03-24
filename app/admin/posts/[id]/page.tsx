@@ -303,7 +303,7 @@ export default async function PostAdminPage({ params }: Props) {
               className="w-full rounded-lg bg-white/10 border border-white/10 px-4 py-3 outline-none"
               required
             >
-              {books.map((book) => (
+              {books.map((book: (typeof books)[number]) => (
                 <option key={book.id} value={book.id}>
                   {book.title}
                 </option>
