@@ -29,7 +29,7 @@ export default async function BooksPage() {
       <h1 className="text-3xl font-bold mb-6">Livres</h1>
 
       <div className="grid gap-6">
-        {books.map((book) => (
+        {books.map((book: (typeof books)[number]) => (
           <Link
             key={book.id}
             href={`/books/${book.slug}`}

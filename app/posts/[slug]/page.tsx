@@ -24,7 +24,7 @@ export default async function PostPage({ params }: Props) {
     notFound();
   }
 
-  const slides = post.media.map((item) =>
+  const slides = post.media.map((item: (typeof post.media)[number]) =>
     item.type === "IMAGE"
       ? {
           type: "image" as const,

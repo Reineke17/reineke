@@ -78,7 +78,7 @@ export default async function BookPage({ params }: Props) {
           <p className="text-black/50">Aucun chapitre publié.</p>
         ) : (
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-            {book.posts.map((post, index) => {
+            {book.posts.map((post: (typeof book.posts)[number], index: number) => {
               const cover = post.media[0];
 
               return (

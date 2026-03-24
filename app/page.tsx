@@ -42,8 +42,8 @@ export default async function HomePage() {
       )}
 
       <div className="mx-auto w-full max-w-[620px] py-4 md:px-6 md:py-6">
-        {posts.map((post) => {
-          const slides = post.media.map((item) =>
+        {posts.map((post: (typeof posts)[number]) => {
+          const slides = post.media.map((item: (typeof post.media)[number]) =>
             item.type === "IMAGE"
               ? {
                   type: "image" as const,
