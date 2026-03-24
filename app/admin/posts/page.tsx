@@ -24,7 +24,7 @@ export default async function AdminPostsPage() {
       <h1 className="text-3xl font-bold mb-6">Posts</h1>
 
       <div className="space-y-4">
-        {posts.map((post) => (
+        {posts.map((post: any) => (
           <div
             key={post.id}
             className="p-4 rounded-xl border border-white/10 bg-white/5"
