@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { mkdir, writeFile, unlink } from "fs/promises";
 import path from "path";
 import Link from "next/link";
+import { put } from "@vercel/blob";
 
 type Props = {
   params: Promise<{
@@ -53,32 +54,24 @@ async function addMedia(formData: FormData) {
   }
 
   const files = formData.getAll("files") as File[];
-
   const validFiles = files.filter((file) => file && file.size > 0);
 
   if (validFiles.length === 0) {
     return;
   }
 
-  const uploadDir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(uploadDir, { recursive: true });
-
   for (const [index, file] of validFiles.entries()) {
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
     const safeFileName = `${Date.now()}-${index}-${file.name.replace(/\s+/g, "-")}`;
-    const filePath = path.join(uploadDir, safeFileName);
 
-    await writeFile(filePath, buffer);
-
-    const fileUrl = `/uploads/${safeFileName}`;
+    const blob = await put(`uploads/${safeFileName}`, file, {
+      access: "public",
+    });
 
     await prisma.media.create({
       data: {
         postId,
         type: type === "VIDEO" ? "VIDEO" : "IMAGE",
-        url: fileUrl,
+        url: blob.url,
         caption: caption || null,
         order: startOrder + index,
       },
