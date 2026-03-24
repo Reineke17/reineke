@@ -22,7 +22,7 @@ export default async function AdminBooksPage() {
       <h1 className="text-3xl font-bold mb-6">Livres</h1>
 
       <div className="space-y-4">
-        {books.map((book) => (
+        {books.map((book: (typeof books)[number]) => (
           <div
             key={book.id}
             className="p-4 rounded-xl border border-black/10 bg-white"
