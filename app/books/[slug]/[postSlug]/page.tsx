@@ -45,7 +45,7 @@ export default async function BookReaderPage({ params }: Props) {
     title: post.title,
     excerpt: post.excerpt,
     publishedAt: post.publishedAt ? post.publishedAt.toISOString() : null,
-    slides: post.media.map((item) =>
+    slides: post.media.map((item: (typeof post.media)[number]) =>
       item.type === "IMAGE"
         ? {
             type: "image" as const,
