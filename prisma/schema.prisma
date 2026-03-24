@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Book {
+  id            String   @id @default(cuid())
+  title         String
+  slug          String   @unique
+  description   String?
+  coverImageUrl String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  posts         Post[]
+}
+
+model Post {
+  id          String      @id @default(cuid())
+  bookId      String
+  title       String
+  slug        String      @unique
+  excerpt     String?
+  status      PostStatus  @default(DRAFT)
+  publishedAt DateTime?
+  globalOrder Int         @default(0)
+  bookOrder   Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  book        Book        @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  media       Media[]
+
+  @@index([bookId])
+  @@index([status])
+  @@index([publishedAt])
+}
+
+model Media {
+  id        String    @id @default(cuid())
+  postId    String
+  type      MediaType
+  url       String
+  alt       String?
+  caption   String?
+  order     Int       @default(0)
+  width     Int?
+  height    Int?
+  duration  Int?
+  createdAt DateTime  @default(now())
+
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
