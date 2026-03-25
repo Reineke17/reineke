@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
-import { mkdir, unlink, writeFile } from "fs/promises";
-import path from "path";
+import { revalidatePath } from "next/cache";
+import { put } from "@vercel/blob";
 
 type Props = {
   params: Promise<{
@@ -31,31 +31,27 @@ async function updateBook(formData: FormData) {
     return;
   }
 
+  const conflictingBook = await prisma.book.findUnique({
+    where: { slug },
+  });
+
+  if (conflictingBook && conflictingBook.id !== bookId) {
+    throw new Error("Ce slug existe déjà. Choisis-en un autre.");
+  }
+
   let coverImageUrl = existingBook.coverImageUrl;
 
   if (file && file.size > 0) {
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadDir, { recursive: true });
-
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
     const safeFileName = `${Date.now()}-book-${file.name.replace(/\s+/g, "-")}`;
-    const filePath = path.join(uploadDir, safeFileName);
 
-    await writeFile(filePath, buffer);
+    const blob = await put(`uploads/${safeFileName}`, file, {
+      access: "public",
+    });
 
-    if (existingBook.coverImageUrl?.startsWith("/uploads/")) {
-      const oldPath = path.join(process.cwd(), "public", existingBook.coverImageUrl);
-      try {
-        await unlink(oldPath);
-      } catch {
-        // ignore
-      }
-    }
-
-    coverImageUrl = `/uploads/${safeFileName}`;
+    coverImageUrl = blob.url;
   }
+
+  const previousSlug = existingBook.slug;
 
   await prisma.book.update({
     where: { id: bookId },
@@ -66,6 +62,12 @@ async function updateBook(formData: FormData) {
       coverImageUrl,
     },
   });
+
+  revalidatePath("/admin/books");
+  revalidatePath("/books");
+  revalidatePath("/");
+  revalidatePath(`/books/${previousSlug}`);
+  revalidatePath(`/books/${slug}`);
 
   redirect(`/admin/books/${bookId}`);
 }
@@ -87,21 +89,17 @@ async function removeBookCover(formData: FormData) {
     return;
   }
 
-  if (book.coverImageUrl?.startsWith("/uploads/")) {
-    const filePath = path.join(process.cwd(), "public", book.coverImageUrl);
-    try {
-      await unlink(filePath);
-    } catch {
-      // ignore
-    }
-  }
-
   await prisma.book.update({
     where: { id: bookId },
     data: {
       coverImageUrl: null,
     },
   });
+
+  revalidatePath("/admin/books");
+  revalidatePath("/books");
+  revalidatePath("/");
+  revalidatePath(`/books/${book.slug}`);
 
   redirect(`/admin/books/${bookId}`);
 }
@@ -130,31 +128,14 @@ async function deleteBook(formData: FormData) {
     return;
   }
 
-  if (book.coverImageUrl?.startsWith("/uploads/")) {
-    const coverPath = path.join(process.cwd(), "public", book.coverImageUrl);
-    try {
-      await unlink(coverPath);
-    } catch {
-      // ignore
-    }
-  }
-
-  for (const post of book.posts) {
-    for (const media of post.media) {
-      if (media.url.startsWith("/uploads/")) {
-        const mediaPath = path.join(process.cwd(), "public", media.url);
-        try {
-          await unlink(mediaPath);
-        } catch {
-          // ignore
-        }
-      }
-    }
-  }
-
   await prisma.book.delete({
     where: { id: bookId },
   });
+
+  revalidatePath("/admin/books");
+  revalidatePath("/books");
+  revalidatePath("/");
+  revalidatePath(`/books/${book.slug}`);
 
   redirect("/admin/books");
 }

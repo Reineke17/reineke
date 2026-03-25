@@ -2,8 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
+import { put } from "@vercel/blob";
 
 async function createBook(formData: FormData) {
   "use server";
@@ -28,18 +27,13 @@ async function createBook(formData: FormData) {
   let coverImageUrl: string | null = null;
 
   if (file && file.size > 0) {
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadDir, { recursive: true });
-
     const safeFileName = `${Date.now()}-book-${file.name.replace(/\s+/g, "-")}`;
-    const filePath = path.join(uploadDir, safeFileName);
 
-    await writeFile(filePath, buffer);
+    const blob = await put(`uploads/${safeFileName}`, file, {
+      access: "public",
+    });
 
-    coverImageUrl = `/uploads/${safeFileName}`;
+    coverImageUrl = blob.url;
   }
 
   await prisma.book.create({
