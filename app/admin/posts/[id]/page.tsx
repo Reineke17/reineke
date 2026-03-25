@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
-import { mkdir, writeFile, unlink } from "fs/promises";
+import { revalidatePath } from "next/cache";
+import { unlink } from "fs/promises";
 import path from "path";
 import Link from "next/link";
 import { put } from "@vercel/blob";
@@ -26,6 +27,23 @@ async function updatePost(formData: FormData) {
     return;
   }
 
+  const existingPost = await prisma.post.findUnique({
+    where: { id: postId },
+    include: { book: true },
+  });
+
+  if (!existingPost) {
+    return;
+  }
+
+  const conflictingPost = await prisma.post.findUnique({
+    where: { slug },
+  });
+
+  if (conflictingPost && conflictingPost.id !== postId) {
+    throw new Error("Ce slug de post existe déjà. Choisis-en un autre.");
+  }
+
   await prisma.post.update({
     where: { id: postId },
     data: {
@@ -37,6 +55,26 @@ async function updatePost(formData: FormData) {
       bookOrder,
     },
   });
+
+  const updatedPost = await prisma.post.findUnique({
+    where: { id: postId },
+    include: { book: true },
+  });
+
+  revalidatePath("/admin/posts");
+  revalidatePath("/admin/books");
+  revalidatePath("/");
+  revalidatePath("/books");
+  revalidatePath(`/posts/${existingPost.slug}`);
+
+  if (existingPost.book) {
+    revalidatePath(`/books/${existingPost.book.slug}`);
+  }
+
+  if (updatedPost) {
+    revalidatePath(`/posts/${updatedPost.slug}`);
+    revalidatePath(`/books/${updatedPost.book.slug}`);
+  }
 
   redirect(`/admin/posts/${postId}`);
 }
@@ -50,6 +88,15 @@ async function addMedia(formData: FormData) {
   const startOrder = Number(formData.get("order") || 0);
 
   if (!postId) {
+    return;
+  }
+
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    include: { book: true },
+  });
+
+  if (!post) {
     return;
   }
 
@@ -78,6 +125,12 @@ async function addMedia(formData: FormData) {
     });
   }
 
+  revalidatePath("/admin/posts");
+  revalidatePath("/");
+  revalidatePath("/books");
+  revalidatePath(`/posts/${post.slug}`);
+  revalidatePath(`/books/${post.book.slug}`);
+
   redirect(`/admin/posts/${postId}`);
 }
 
@@ -95,6 +148,15 @@ async function deleteMedia(formData: FormData) {
     where: { id: mediaId },
   });
 
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    include: { book: true },
+  });
+
+  if (!post) {
+    return;
+  }
+
   if (media?.url?.startsWith("/uploads/")) {
     const filePath = path.join(process.cwd(), "public", media.url);
     try {
@@ -107,6 +169,12 @@ async function deleteMedia(formData: FormData) {
   await prisma.media.delete({
     where: { id: mediaId },
   });
+
+  revalidatePath("/admin/posts");
+  revalidatePath("/");
+  revalidatePath("/books");
+  revalidatePath(`/posts/${post.slug}`);
+  revalidatePath(`/books/${post.book.slug}`);
 
   redirect(`/admin/posts/${postId}`);
 }
@@ -121,6 +189,15 @@ async function updatePostStatus(formData: FormData) {
     return;
   }
 
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    include: { book: true },
+  });
+
+  if (!post) {
+    return;
+  }
+
   await prisma.post.update({
     where: { id: postId },
     data: {
@@ -128,6 +205,12 @@ async function updatePostStatus(formData: FormData) {
       publishedAt: nextStatus === "PUBLISHED" ? new Date() : null,
     },
   });
+
+  revalidatePath("/admin/posts");
+  revalidatePath("/");
+  revalidatePath("/books");
+  revalidatePath(`/posts/${post.slug}`);
+  revalidatePath(`/books/${post.book.slug}`);
 
   redirect(`/admin/posts/${postId}`);
 }
@@ -141,11 +224,19 @@ async function deletePost(formData: FormData) {
     return;
   }
 
-  const medias = await prisma.media.findMany({
-    where: { postId },
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    include: {
+      book: true,
+      media: true,
+    },
   });
 
-  for (const media of medias) {
+  if (!post) {
+    return;
+  }
+
+  for (const media of post.media) {
     if (media.url.startsWith("/uploads/")) {
       const filePath = path.join(process.cwd(), "public", media.url);
       try {
@@ -159,6 +250,12 @@ async function deletePost(formData: FormData) {
   await prisma.post.delete({
     where: { id: postId },
   });
+
+  revalidatePath("/admin/posts");
+  revalidatePath("/");
+  revalidatePath("/books");
+  revalidatePath(`/posts/${post.slug}`);
+  revalidatePath(`/books/${post.book.slug}`);
 
   redirect("/admin/posts");
 }
@@ -174,10 +271,25 @@ async function updateMediaOrder(formData: FormData) {
     return;
   }
 
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    include: { book: true },
+  });
+
+  if (!post) {
+    return;
+  }
+
   await prisma.media.update({
     where: { id: mediaId },
     data: { order },
   });
+
+  revalidatePath("/admin/posts");
+  revalidatePath("/");
+  revalidatePath("/books");
+  revalidatePath(`/posts/${post.slug}`);
+  revalidatePath(`/books/${post.book.slug}`);
 
   redirect(`/admin/posts/${postId}`);
 }
@@ -207,16 +319,15 @@ export default async function PostAdminPage({ params }: Props) {
 
   return (
     <main className="min-h-screen bg-black text-white p-6">
-        <div className="mb-6">
-            <Link
-                href="/admin/posts"
-                className="text-sm text-white/60 hover:underline"
+      <div className="mb-6">
+        <Link
+          href="/admin/posts"
+          className="text-sm text-white/60 hover:underline"
         >
-        ← Retour aux posts
-            </Link>
-        </div>
+          ← Retour aux posts
+        </Link>
+      </div>
 
-    
       <div className="mb-6">
         <h1 className="text-3xl font-bold">{post.title}</h1>
         <p className="text-white/60 text-sm mt-1">Livre : {post.book.title}</p>

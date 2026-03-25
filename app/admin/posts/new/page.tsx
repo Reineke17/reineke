@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import Link from "next/link";
 
 async function createPost(formData: FormData) {
@@ -17,7 +18,19 @@ async function createPost(formData: FormData) {
     return;
   }
 
-  await prisma.post.create({
+  const existingPost = await prisma.post.findUnique({
+    where: { slug },
+  });
+
+  if (existingPost) {
+    throw new Error("Ce slug de post existe déjà. Choisis-en un autre.");
+  }
+
+  const book = await prisma.book.findUnique({
+    where: { id: bookId },
+  });
+
+  const createdPost = await prisma.post.create({
     data: {
       title,
       slug,
@@ -30,7 +43,17 @@ async function createPost(formData: FormData) {
     },
   });
 
-  redirect("/admin");
+  revalidatePath("/admin/posts");
+  revalidatePath("/admin/books");
+  revalidatePath("/");
+  revalidatePath("/books");
+  revalidatePath(`/posts/${createdPost.slug}`);
+
+  if (book) {
+    revalidatePath(`/books/${book.slug}`);
+  }
+
+  redirect("/admin/posts");
 }
 
 export default async function NewPostPage() {
@@ -42,7 +65,6 @@ export default async function NewPostPage() {
 
   return (
     <main className="min-h-screen bg-black text-white p-6">
-      
       <div className="mb-6">
         <Link
           href="/admin/posts"
@@ -51,6 +73,7 @@ export default async function NewPostPage() {
           ← Retour aux posts
         </Link>
       </div>
+
       <h1 className="text-3xl font-bold mb-6">Créer un post</h1>
 
       <form action={createPost} className="max-w-xl space-y-4">

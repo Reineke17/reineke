@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 
@@ -14,6 +15,14 @@ async function createBook(formData: FormData) {
 
   if (!title || !slug) {
     return;
+  }
+
+  const existingBook = await prisma.book.findUnique({
+    where: { slug },
+  });
+
+  if (existingBook) {
+    throw new Error("Ce slug existe déjà. Choisis-en un autre.");
   }
 
   let coverImageUrl: string | null = null;
@@ -41,6 +50,10 @@ async function createBook(formData: FormData) {
       coverImageUrl,
     },
   });
+
+  revalidatePath("/admin/books");
+  revalidatePath("/books");
+  revalidatePath("/");
 
   redirect("/admin/books");
 }

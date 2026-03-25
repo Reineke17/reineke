@@ -13,10 +13,7 @@ export default async function AdminBooksPage() {
   return (
     <main className="min-h-screen bg-white text-black p-6">
       <div className="mb-6">
-        <Link
-          href="/admin"
-          className="text-sm text-black/60 hover:underline"
-        >
+        <Link href="/admin" className="text-sm text-black/60 hover:underline">
           ← Retour admin
         </Link>
       </div>
