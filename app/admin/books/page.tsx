@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
@@ -7,8 +9,6 @@ export default async function AdminBooksPage() {
       createdAt: "desc",
     },
   });
-
-  console.log("BOOKS ADMIN:", books);
 
   return (
     <main className="min-h-screen bg-white text-black p-6">
