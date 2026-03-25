@@ -8,6 +8,8 @@ export default async function AdminBooksPage() {
     },
   });
 
+  console.log("BOOKS ADMIN:", books);
+
   return (
     <main className="min-h-screen bg-white text-black p-6">
       <div className="mb-6">
